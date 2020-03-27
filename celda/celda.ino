@@ -2,14 +2,14 @@
 #include <HTTPClient.h>
 #include <string.h>
 
-const char* ssid = "INSOEL-IoT 2";
-const char* password = "86723558";
+//const char* ssid = "INSOEL-IoT 2";
+//const char* password = "86723558";
 
-//const char* ssid = "Edwin-Wifi";
-//const char* password = "Valiant.Shadow35";
+const char* ssid = "Edwin-Wifi";
+const char* password = "Valiant.Shadow35";
 
-IPAddress local_IP(192, 168, 0, 8);
-IPAddress gateway(192, 168, 0, 1);
+IPAddress local_IP(192, 168, 1, 8);
+IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 byte led_wifi = 2;
@@ -61,7 +61,7 @@ void setup() {
 
 void loop() {
     if(tiempo_envio <= abs(millis() - tiempo_inicial) ){
-      const char* host = "192.168.0.21"; 
+      const char* host = "192.168.1.76"; 
       const int httpPort = 80;
       String url = "http://"+String(host)+"/Dinnco/status_celda.php?status_celda="+String(Luz)+"&id_celda=1"; 
       HTTPClient http;

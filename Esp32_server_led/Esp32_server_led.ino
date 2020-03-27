@@ -1,8 +1,9 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
-//const char* ssid = "INFINITUM3B3D";
-//const char* password = "3136770403";
+//const char* ssid = "Edwin-Wifi";
+//const char* password = "Valiant.Shadow35";
 
 const char* ssid = "INSOEL-IoT 2";
 const char* password = "86723558";
@@ -47,8 +48,9 @@ void connectar_to_ssid(){
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     digitalWrite(led_wifi,HIGH);
-    delay(300);
+    delay(250);
     digitalWrite(led_wifi,LOW);
+    delay(250);
   }
   Serial.println();
 
@@ -115,7 +117,8 @@ void response(WiFiClient client,uint8_t s){
   }
 }
 
-void request(const char* host,const int httpPort,String url){
+String request(const char* host,const int httpPort,String url){
+  String payload;
   String url_aux = "http://"+String(host)+":"+String(httpPort)+"/"+url; 
   HTTPClient http;
 
@@ -126,14 +129,15 @@ void request(const char* host,const int httpPort,String url){
 
   if (httpCode > 0) { //Check for the returning code
 
-      String payload = http.getString();
+      payload = http.getString();
       Serial.println(httpCode);
       Serial.println(payload);
   }else {
     Serial.println("Error on HTTP request");
   }
 
-  http.end(); 
+  http.end();
+  return payload; 
 }
 
 bool  ZeroCross(byte moc){
@@ -150,10 +154,35 @@ bool  ZeroCross(byte moc){
   return(Cross);
 }
 
+void status_variables(const char *host,const int httpPort,String url,uint8_t s[3]){
+  String json_response = request(host,httpPort,url);
+
+  StaticJsonDocument<400> doc;
+
+  DeserializationError error = deserializeJson(doc,json_response);
+  if(error){
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+  }
+
+  for(int i=0;i<doc.size();i++){
+    JsonObject object = doc[i].as<JsonObject>();
+    const char* aux = object["id_lampara"];
+    int status_lampara = (int)object["status"];
+    Serial.println(aux);
+
+    if(status_lampara){
+      digitalWrite(s[i],HIGH);
+    }else{
+      digitalWrite(s[i],LOW);
+    }
+  }
+  
+}
+
 bool control_general(bool sensor ,bool aux_sensor,uint8_t led_control,uint8_t s){
   WiFiClient client;
-  const char* host = "192.168.0.21"; 
-  const int httpPort = 80; 
+  const char* host = "192.168.0.16";   const int httpPort = 80; 
   bool aux_sensor_apagador_int = aux_sensor;
   
   if (sensor == HIGH) {
@@ -191,7 +220,29 @@ bool control_general(bool sensor ,bool aux_sensor,uint8_t led_control,uint8_t s)
          if(tiempo_peticion <= abs(currentmillis - startmillis)){
             Serial.println("Revision de Encendido");
             String url = "Dinnco/current_status_light.php?id_area=4";
-            request(host,httpPort,url);
+            String json_response = request(host,httpPort,url);
+
+            StaticJsonDocument<400> doc;
+
+            DeserializationError error = deserializeJson(doc,json_response);
+            if(error){
+              Serial.print(F("deserializeJson() failed: "));
+              Serial.println(error.c_str());
+            }
+
+            Serial.println(doc.size());
+            JsonArray json_array = doc.as<JsonArray>();
+            JsonObject object = doc[0].as<JsonObject>();
+            const char* aux = object["id_lampara"];
+            int status_lampara = (int)object["status"];
+            Serial.println(aux);
+
+            if(status_lampara){
+              digitalWrite(s,HIGH);
+            }else{
+              digitalWrite(s,LOW);
+            }
+            
             startmillis = millis();
          }
       }
@@ -227,10 +278,24 @@ void setup() {
   digitalWrite(led_wifi,HIGH);
 }
 
+bool sensor_general(bool sensor,uint8_t s){
+  bool aux;
+  if(!sensor && !s){
+    aux = false;  
+  }else if(sensor $$ !s){
+    aux = true;
+  }else if(sensor && s){
+    aux = false;
+  }
+
+  return aux;
+}
+
 void loop() { 
   
   sensor_apagador = ZeroCross(moc1);
   Serial.println(sensor_apagador);
+  sensor_apagador = sensor_general(sensor_apagador,s1);
   aux_sensor_apagador = control_general(sensor_apagador,aux_sensor_apagador,led_moc1,s1);
   delay(500);
 }
